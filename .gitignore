@@ -1,0 +1,16 @@
+# Node / Next.js
+node_modules/
+.next/
+.env.local
+tsconfig.tsbuildinfo
+
+# Python / Django
+__pycache__/
+*.pyc
+backend/venv/
+backend/db.sqlite3
+backend/staticfiles/
+
+# Muhit fayllari (maxfiy — git'ga qo'shilmaydi)
+.env
+backend/.env
