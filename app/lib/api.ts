@@ -12,6 +12,7 @@ export function saveAuth(data: {
   role: string;
   full_name?: string;
   email?: string;
+  phone?: string;
   user_id?: number;
 }) {
   if (typeof window === "undefined") return;
@@ -20,6 +21,7 @@ export function saveAuth(data: {
   localStorage.setItem("role", data.role);
   localStorage.setItem("full_name", data.full_name || "");
   localStorage.setItem("email", data.email || "");
+  localStorage.setItem("phone", data.phone || "");
   if (data.user_id != null) localStorage.setItem("user_id", String(data.user_id));
 }
 
@@ -57,6 +59,36 @@ type ApiOptions = {
   auth?: boolean;
 };
 
+function parseApiError(data: unknown, status: number): string {
+  if (data && typeof data === "object") {
+    const obj = data as Record<string, unknown>;
+    if (typeof obj.detail === "string") return obj.detail;
+    const parts: string[] = [];
+    for (const [key, val] of Object.entries(obj)) {
+      const msg = Array.isArray(val) ? val.join(", ") : String(val);
+      parts.push(`${key}: ${msg}`);
+    }
+    if (parts.length) return parts.join("; ");
+  }
+  return `Xatolik: ${status}`;
+}
+
+async function parseResponse(res: Response) {
+  let data: unknown = null;
+  const text = await res.text();
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = text;
+    }
+  }
+  if (!res.ok) {
+    throw new Error(parseApiError(data, res.status));
+  }
+  return data;
+}
+
 export async function api(path: string, opts: ApiOptions = {}) {
   const { method = "GET", body, auth = true } = opts;
   const headers: Record<string, string> = {
@@ -73,23 +105,26 @@ export async function api(path: string, opts: ApiOptions = {}) {
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  let data: unknown = null;
-  const text = await res.text();
-  if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = text;
-    }
+  return parseResponse(res);
+}
+
+/** Galereyadan rasm yuklash (multipart/form-data) */
+export async function apiForm(
+  path: string,
+  opts: { method?: string; body: FormData; auth?: boolean } = { body: new FormData() }
+) {
+  const { method = "POST", body, auth = true } = opts;
+  const headers: Record<string, string> = {};
+  if (auth) {
+    const token = getToken();
+    if (token) headers["Authorization"] = `Bearer ${token}`;
   }
 
-  if (!res.ok) {
-    const msg =
-      (data &&
-        typeof data === "object" &&
-        ((data as Record<string, unknown>).detail as string)) ||
-      `Xatolik: ${res.status}`;
-    throw new Error(typeof msg === "string" ? msg : JSON.stringify(data));
-  }
-  return data;
+  const res = await fetch(`${API_URL}${path}`, {
+    method,
+    headers,
+    body,
+  });
+
+  return parseResponse(res);
 }

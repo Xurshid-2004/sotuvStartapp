@@ -27,6 +27,7 @@ const ICONS = {
   chat: "M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z",
   user: "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z",
   orders: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4",
+  map: "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z",
 };
 
 export default function BottomNav() {
@@ -68,22 +69,25 @@ export default function BottomNav() {
       icon: <Icon path={role === "ishlab_chiqaruvchi" ? ICONS.plus : ICONS.orders} fill={pathname === "/orders"} />,
     },
     { key: "chat", label: "Chat", href: "/chat", icon: <Icon path={ICONS.chat} fill={pathname === "/chat"} />, badge: unread },
+    ...(role === "sotuvchi"
+      ? [{ key: "map", label: "Xaritadan", href: "/xaritadan", icon: <Icon path={ICONS.map} fill={pathname === "/xaritadan"} /> }]
+      : []),
     { key: "profile", label: "Profil", href: "/profile", icon: <Icon path={ICONS.user} fill={pathname === "/profile"} /> },
   ];
 
   return (
     <nav className="fixed bottom-0 inset-x-0 z-40 pb-[env(safe-area-inset-bottom)]">
-      <div className="mx-auto max-w-lg px-3 pb-3">
-        <div className="bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-[0_8px_40px_-8px_rgba(124,58,237,0.35)] border border-violet-100 flex items-center justify-around px-2 py-2">
+      <div className="mx-auto max-w-2xl px-2 pb-3">
+        <div className="bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-[0_8px_40px_-8px_rgba(124,58,237,0.35)] border border-violet-100 flex items-center justify-around px-1 py-2">
           {items.map((it) => {
             const active = pathname === it.href || (it.key === "home" && pathname === homeHref);
             return (
               <button
                 key={it.key}
                 onClick={() => router.push(it.href)}
-                className="relative flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-2xl transition active:scale-90"
+                className="relative flex flex-col items-center gap-0.5 px-1.5 sm:px-2 py-1.5 rounded-2xl transition active:scale-90 min-w-0"
               >
-                <span className={`relative flex items-center justify-center w-11 h-9 rounded-2xl transition ${active ? "bg-violet-100 text-violet-700" : "text-violet-400"}`}>
+                <span className={`relative flex items-center justify-center w-10 h-9 sm:w-11 rounded-2xl transition ${active ? "bg-violet-100 text-violet-700" : "text-violet-400"}`}>
                   {it.icon}
                   {!!it.badge && it.badge > 0 && (
                     <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">
@@ -91,7 +95,7 @@ export default function BottomNav() {
                     </span>
                   )}
                 </span>
-                <span className={`text-[11px] font-semibold ${active ? "text-violet-700" : "text-violet-400"}`}>{it.label}</span>
+                <span className={`text-[10px] sm:text-[11px] font-semibold truncate max-w-[4.5rem] sm:max-w-none ${active ? "text-violet-700" : "text-violet-400"}`}>{it.label}</span>
               </button>
             );
           })}

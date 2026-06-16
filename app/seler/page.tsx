@@ -3,8 +3,10 @@
 import { useEffect, useState, useCallback, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api, getRole } from "../lib/api";
+import { PRODUCT_CATEGORIES } from "../lib/categories";
 import BottomNav from "../components/BottomNav";
 import Carousel, { Slide } from "../components/Carousel";
+import Logo from "../components/Logo";
 
 type Product = {
   id: number;
@@ -12,6 +14,7 @@ type Product = {
   description: string;
   price: string;
   unit: string;
+  stock: string;
   category: string;
   image_url: string;
   manufacturer: number;
@@ -20,6 +23,26 @@ type Product = {
 
 function fmtPrice(p: string) {
   return Math.round(Number(p)).toLocaleString("ru-RU");
+}
+
+function formatQty(value: string | number) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "0";
+  return n.toLocaleString("ru-RU", { maximumFractionDigits: 3 });
+}
+
+function qtyStepForUnit(unit: string) {
+  const u = (unit || "").trim().toLowerCase();
+  const fractionalUnits = ["kg", "kilogram", "l", "litr", "metr", "m", "tonna"];
+  return fractionalUnits.some((x) => u.includes(x)) ? 0.1 : 1;
+}
+
+function normalizeQtyInput(raw: string) {
+  const cleaned = raw.replace(",", ".").replace(/[^0-9.]/g, "");
+  const [whole, ...rest] = cleaned.split(".");
+  const frac = rest.join("").slice(0, 3);
+  if (cleaned.startsWith(".")) return `0.${frac}`;
+  return frac.length ? `${whole || "0"}.${frac}` : (whole || "");
 }
 
 function Placeholder({ name }: { name: string }) {
@@ -71,9 +94,12 @@ const SelerInner = () => {
   }, [router, loadData, params]);
 
   const categories = useMemo(() => {
-    const set = new Set<string>();
-    products.forEach((p) => p.category && set.add(p.category));
-    return ["Hammasi", ...Array.from(set)];
+    const fromDb = new Set<string>();
+    products.forEach((p) => p.category && fromDb.add(p.category));
+    const extra = Array.from(fromDb).filter(
+      (c) => !PRODUCT_CATEGORIES.includes(c as (typeof PRODUCT_CATEGORIES)[number])
+    );
+    return ["Hammasi", ...PRODUCT_CATEGORIES, ...extra];
   }, [products]);
 
   // Karusel uchun rasmli mahsulotlardan eng qimmat 5 tasini tanlaymiz
@@ -127,24 +153,38 @@ const SelerInner = () => {
 
   const openOrder = (p: Product) => {
     setPicked(p);
-    setQty("1");
+    setQty(qtyStepForUnit(p.unit) < 1 ? "0.1" : "1");
     setNote("");
+  };
+
+  const adjustQty = (delta: number) => {
+    if (!picked) return;
+    const step = qtyStepForUnit(picked.unit);
+    const current = Number(qty.replace(",", ".")) || 0;
+    const next = Math.max(step, current + delta * step);
+    const rounded = Number(next.toFixed(3));
+    setQty(String(rounded));
   };
 
   const submitOrder = async (alsoMessage: boolean) => {
     if (!picked) return;
+    const quantity = Number(qty.replace(",", "."));
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      showToast("Miqdor noto'g'ri kiritildi");
+      return;
+    }
     setSending(true);
     try {
       await api("/requests/", {
         method: "POST",
-        body: { product: picked.id, quantity: Number(qty), note },
+        body: { product: picked.id, quantity, note },
       });
       if (alsoMessage) {
         const conv = (await api("/conversations/", {
           method: "POST",
           body: { user_id: picked.manufacturer, product: picked.id },
         })) as { id: number };
-        const autoText = `Buyurtma: ${picked.name} — ${qty} ${picked.unit}.${note ? " " + note : ""}`;
+        const autoText = `Buyurtma: ${picked.name} — ${formatQty(quantity)} ${picked.unit}.${note ? " " + note : ""}`;
         await api(`/conversations/${conv.id}/send/`, { method: "POST", body: { text: autoText } });
         setPicked(null);
         router.push(`/chat?c=${conv.id}`);
@@ -162,21 +202,18 @@ const SelerInner = () => {
   return (
     <div className="min-h-screen pb-28" style={{ background: "var(--bg)" }}>
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-gradient-to-r from-violet-700 to-violet-600 shadow-lg">
+      <header className="sticky top-0 z-30 bg-gradient-to-r from-slate-900 via-teal-900 to-emerald-800 shadow-lg shadow-teal-950/30">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center font-black text-violet-700">S</div>
-            <span className="hidden sm:block text-white font-extrabold text-lg tracking-tight">SavdoMarket</span>
-          </div>
+          <Logo size={38} textClassName="hidden sm:inline text-white text-lg" />
           <div className="flex-1 relative">
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Mahsulot yoki ishlab chiqaruvchini qidiring..."
-              className="w-full pl-11 pr-4 py-2.5 rounded-2xl bg-white text-ink placeholder-violet-300 outline-none focus:ring-4 focus:ring-violet-400/40 transition"
+              className="w-full pl-11 pr-4 py-2.5 rounded-2xl bg-white text-ink placeholder-teal-300/80 outline-none focus:ring-4 focus:ring-teal-400/35 transition"
               style={{ color: "var(--ink)" }}
             />
-            <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-violet-400" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
+            <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-teal-500" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
               <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" strokeLinecap="round" />
             </svg>
           </div>
@@ -187,7 +224,7 @@ const SelerInner = () => {
               key={c}
               onClick={() => setActiveCat(c)}
               className={`px-4 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap transition ${
-                activeCat === c ? "bg-white text-violet-700" : "bg-white/15 text-white hover:bg-white/25"
+                activeCat === c ? "bg-white text-teal-800" : "bg-white/15 text-white hover:bg-white/25"
               }`}
             >
               {c}
@@ -298,18 +335,21 @@ const SelerInner = () => {
               </div>
             </div>
 
-            <label className="text-sm font-bold" style={{ color: "var(--ink)" }}>Kerakli miqdor ({picked.unit})</label>
+            <label className="text-sm font-bold" style={{ color: "var(--ink)" }}>Sotuvda bor: ({picked.unit})</label>
             <div className="flex items-center gap-3 mt-2 mb-4">
-              <button onClick={() => setQty(String(Math.max(1, Number(qty) - 1)))} className="w-11 h-11 rounded-xl bg-violet-100 text-violet-700 font-black text-xl active:scale-90 transition">−</button>
+              <button onClick={() => adjustQty(-1)} className="w-11 h-11 rounded-xl bg-violet-100 text-violet-700 font-black text-xl active:scale-90 transition">−</button>
               <input
                 value={qty}
-                onChange={(e) => setQty(e.target.value.replace(/\D/g, "") || "")}
-                inputMode="numeric"
+                onChange={(e) => setQty(normalizeQtyInput(e.target.value))}
+                inputMode="decimal"
                 className="flex-1 text-center text-xl font-black py-2.5 rounded-xl border-2 border-violet-200 outline-none focus:border-violet-500"
                 style={{ color: "var(--ink)" }}
               />
-              <button onClick={() => setQty(String(Number(qty || "0") + 1))} className="w-11 h-11 rounded-xl bg-violet-100 text-violet-700 font-black text-xl active:scale-90 transition">+</button>
+              <button onClick={() => adjustQty(1)} className="w-11 h-11 rounded-xl bg-violet-100 text-violet-700 font-black text-xl active:scale-90 transition">+</button>
             </div>
+            <p className="text-[11px] text-violet-400 -mt-2 mb-3">
+              Kasr miqdor yozish mumkin: masalan 1.5 yoki 1,5.
+            </p>
 
             <textarea
               value={note}
@@ -322,14 +362,14 @@ const SelerInner = () => {
             <div className="flex gap-3 mt-5">
               <button
                 onClick={() => submitOrder(false)}
-                disabled={sending || !qty || Number(qty) < 1}
+                disabled={sending || !qty || Number(qty.replace(",", ".")) <= 0}
                 className="flex-1 py-3 rounded-xl bg-violet-100 text-violet-700 font-bold transition active:scale-95 disabled:opacity-50"
               >
                 {sending ? "..." : "Buyurtma"}
               </button>
               <button
                 onClick={() => submitOrder(true)}
-                disabled={sending || !qty || Number(qty) < 1}
+                disabled={sending || !qty || Number(qty.replace(",", ".")) <= 0}
                 className="flex-[1.4] py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" strokeLinejoin="round" /></svg>

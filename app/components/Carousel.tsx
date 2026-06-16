@@ -17,16 +17,16 @@ function fmtPrice(p?: string) {
 }
 
 const TONES = [
-  "from-violet-900 via-violet-700 to-violet-600",
-  "from-fuchsia-900 via-purple-700 to-violet-600",
-  "from-indigo-900 via-violet-800 to-purple-600",
-  "from-violet-800 via-purple-700 to-fuchsia-600",
+  "from-slate-900 via-teal-900 to-emerald-700",
+  "from-cyan-950 via-teal-800 to-slate-800",
+  "from-emerald-950 via-teal-800 to-cyan-800",
+  "from-slate-800 via-emerald-900 to-teal-700",
 ];
 
 export default function Carousel({
   slides,
   onSlideClick,
-  interval = 4000,
+  interval = 3000,
 }: {
   slides: Slide[];
   onSlideClick?: (id: number) => void;
@@ -75,11 +75,11 @@ export default function Carousel({
             className={`relative w-full shrink-0 text-left bg-gradient-to-r ${s.tone || TONES[i % TONES.length]} h-48 sm:h-64`}
           >
             <div className="relative z-10 h-full flex flex-col justify-center px-6 sm:px-10 max-w-[60%]">
-              <p className="text-electric font-bold text-[11px] sm:text-sm uppercase tracking-wider mb-1">Tavsiya etamiz</p>
+              <p className="text-amber-300 font-bold text-[11px] sm:text-sm uppercase tracking-wider mb-1">Tavsiya etamiz</p>
               <h2 className="text-2xl sm:text-4xl font-black text-white leading-tight line-clamp-2">{s.title}</h2>
-              {s.subtitle && <p className="text-violet-200 text-xs sm:text-sm mt-1">{s.subtitle}</p>}
+              {s.subtitle && <p className="text-teal-100/90 text-xs sm:text-sm mt-1">{s.subtitle}</p>}
               {s.price && (
-                <div className="mt-3 inline-flex items-center gap-1.5 bg-electric text-violet-900 font-black text-lg sm:text-2xl px-3 py-1 rounded-xl w-fit">
+                <div className="mt-3 inline-flex items-center gap-1.5 bg-amber-400 text-slate-900 font-black text-lg sm:text-2xl px-3 py-1 rounded-xl w-fit">
                   {fmtPrice(s.price)} <span className="text-xs sm:text-sm">so&apos;m</span>
                 </div>
               )}

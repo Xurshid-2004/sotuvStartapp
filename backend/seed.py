@@ -8,6 +8,7 @@ firma, _ = User.objects.get_or_create(
     defaults={"username": "firma@test.uz", "full_name": "Zavod A", "role": "ishlab_chiqaruvchi"},
 )
 firma.role = "ishlab_chiqaruvchi"
+firma.phone = "+998901234567"
 firma.set_password("parol1234")
 firma.save()
 
@@ -17,6 +18,7 @@ firma2, _ = User.objects.get_or_create(
     defaults={"username": "texno@test.uz", "full_name": "Texno Plus", "role": "ishlab_chiqaruvchi"},
 )
 firma2.role = "ishlab_chiqaruvchi"
+firma2.phone = "+998907654321"
 firma2.set_password("parol1234")
 firma2.save()
 
@@ -25,6 +27,7 @@ seller, _ = User.objects.get_or_create(
     defaults={"username": "dokon@test.uz", "full_name": "Dokon B", "role": "sotuvchi"},
 )
 seller.role = "sotuvchi"
+seller.phone = "+998909999999"
 seller.set_password("parol1234")
 seller.save()
 
@@ -53,10 +56,21 @@ demo = [
     ("Sport sumka", "Kiyim", "210000", "dona", 75, "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500", firma2),
 ]
 
-for name, cat, price, unit, stock, img, mf in demo:
+centers = {
+    "firma@test.uz": (41.3111, 69.2797),
+    "texno@test.uz": (41.3263, 69.2955),
+}
+
+for idx, (name, cat, price, unit, stock, img, mf) in enumerate(demo):
+    c_lat, c_lng = centers.get(mf.email, (41.3111, 69.2797))
+    lat = round(c_lat + ((idx % 5) - 2) * 0.0021, 6)
+    lng = round(c_lng + ((idx % 4) - 1.5) * 0.0022, 6)
     Product.objects.create(
         manufacturer=mf, name=name, category=cat,
         price=price, unit=unit, stock=stock, image_url=img,
+        producer_phone="+998901234567" if mf.email == "firma@test.uz" else "+998907654321",
+        location_address="Toshkent sh., Yunusobod tumani",
+        latitude=lat, longitude=lng,
         description=f"{name} — sifatli mahsulot, ishlab chiqaruvchidan to'g'ridan-to'g'ri.",
     )
 

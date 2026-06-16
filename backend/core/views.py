@@ -1,10 +1,13 @@
 from rest_framework import generics, viewsets, permissions, status
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
+from django.db import transaction
 from django.db.models import Q
 
+from .categories import PRODUCT_CATEGORIES
 from .models import (
     User, Product, Request, Conversation, Message, Favorite,
 )
@@ -43,6 +46,7 @@ class IsIshlabChiqaruvchi(permissions.BasePermission):
 class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_queryset(self):
         user = self.request.user
@@ -64,6 +68,11 @@ class ProductViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(manufacturer=self.request.user)
 
+    @action(detail=False, methods=["get"])
+    def categories(self, request):
+        """Ruxsat etilgan mahsulot kategoriyalari ro'yxati."""
+        return Response(PRODUCT_CATEGORIES)
+
 
 class RequestViewSet(viewsets.ModelViewSet):
     serializer_class = RequestSerializer
@@ -78,7 +87,16 @@ class RequestViewSet(viewsets.ModelViewSet):
         return qs.filter(product__manufacturer=user)
 
     def perform_create(self, serializer):
-        serializer.save(seller=self.request.user)
+        with transaction.atomic():
+            req = serializer.save(seller=self.request.user)
+            product = Product.objects.select_for_update().get(pk=req.product_id)
+            if req.quantity > product.stock:
+                from rest_framework import serializers as drf_serializers
+                raise drf_serializers.ValidationError(
+                    {"quantity": "Mavjud zaxira yetarli emas."}
+                )
+            product.stock = product.stock - req.quantity
+            product.save(update_fields=["stock"])
 
     @action(detail=True, methods=["post"])
     def set_status(self, request, pk=None):
@@ -110,6 +128,7 @@ class RequestViewSet(viewsets.ModelViewSet):
         from django.utils import timezone
         reject_reason = (request.data.get("reject_reason") or "").strip()
 
+        prev_status = req.status
         req.status = new_status
         req.responded_at = timezone.now()
         if new_status == Request.RAD:
@@ -117,10 +136,10 @@ class RequestViewSet(viewsets.ModelViewSet):
         else:
             req.reject_reason = ""
 
-        # "Yuborildi" bo'lsa zaxiradan ayiriladi (manfiyga tushmaydi)
-        if new_status == Request.YUBORILDI:
+        # Rad etilganda oldin band qilingan zaxira qaytariladi.
+        if new_status == Request.RAD and prev_status in {Request.YANGI, Request.QABUL}:
             product = req.product
-            product.stock = max(0, product.stock - req.quantity)
+            product.stock = product.stock + req.quantity
             product.save(update_fields=["stock"])
 
         req.save()

@@ -12,6 +12,7 @@ class User(AbstractUser):
     ]
 
     email = models.EmailField(unique=True)
+    phone = models.CharField(max_length=30, blank=True, default="")
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default=SOTUVCHI)
     full_name = models.CharField(max_length=150, blank=True)
 
@@ -34,10 +35,24 @@ class Product(models.Model):
     description = models.TextField(blank=True)
     price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     unit = models.CharField(max_length=30, default="dona")
-    stock = models.PositiveIntegerField(default=0)
-    image_url = models.URLField(blank=True, default="")
+    stock = models.DecimalField(max_digits=12, decimal_places=3, default=0)
+    image_url = models.URLField(blank=True, default="")  # tashqi havola (seed / eski ma'lumot)
+    image = models.FileField(upload_to="products/", blank=True, null=True)  # galereyadan yuklangan
     category = models.CharField(max_length=60, blank=True, default="")
+    producer_phone = models.CharField(max_length=30, blank=True, default="")
+    location_address = models.CharField(max_length=255, blank=True, default="")
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def resolved_image_url(self, request=None):
+        """Yuklangan rasm yoki tashqi URL — frontend uchun bitta manba."""
+        if self.image:
+            url = self.image.url
+            if request is not None:
+                return request.build_absolute_uri(url)
+            return url
+        return self.image_url or ""
 
     def __str__(self):
         return self.name
@@ -67,7 +82,7 @@ class Request(models.Model):
         on_delete=models.CASCADE,
         related_name="requests",
     )
-    quantity = models.PositiveIntegerField()
+    quantity = models.DecimalField(max_digits=12, decimal_places=3)
     note = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=YANGI)
     reject_reason = models.TextField(blank=True, default="")  # rad etilganda sabab
