@@ -3,7 +3,7 @@
 // Django backend manzili. Ishlab chiqarishda Vercel env ga qo'ying:
 // NEXT_PUBLIC_API_URL=https://savdomarket-api.onrender.com/api
 export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://savdomarket-api.onrender.com/api";
+  (process.env.NEXT_PUBLIC_API_URL || "https://savdomarket-api.onrender.com/api").replace(/\/+$/, "");
 
 // ---- Token saqlash (localStorage) ----
 export function saveAuth(data: {
