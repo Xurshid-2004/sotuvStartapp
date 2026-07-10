@@ -1,9 +1,9 @@
 "use client";
 
-// Django backend manzili. Ishlab chiqarishda .env.local ga qo'ying:
-// NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api
+// Django backend manzili. Ishlab chiqarishda Vercel env ga qo'ying:
+// NEXT_PUBLIC_API_URL=https://savdomarket-api.onrender.com/api
 export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
+  process.env.NEXT_PUBLIC_API_URL || "https://savdomarket-api.onrender.com/api";
 
 // ---- Token saqlash (localStorage) ----
 export function saveAuth(data: {
@@ -152,7 +152,7 @@ async function requestJson(
     return parseResponse(res);
   } catch (e) {
     if (e instanceof TypeError) {
-      throw new Error("Serverga ulanib bo'lmadi. Backend: cd backend && python manage.py runserver");
+      throw new Error("Serverga ulanib bo'lmadi. API manzili va CORS sozlamalarini tekshiring.");
     }
     throw e;
   }
